@@ -1,49 +1,55 @@
-import requests
-import gspread
 import os
 import json
+import time
+import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
 
-# ---------- GOOGLE SHEETS ----------
 SHEET_ID = "16SBlQGk7KF05ZniHJmlFk1SUg0IYakwUWc4ZbkiI4DE"
+
+# ---- GOOGLE CREDS (SECRET'TAN) ----
+google_creds = json.loads(os.environ["GOOGLE_CREDENTIALS"])
 
 scope = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/drive"
 ]
 
-# SECRET'TAN JSON OKU
-google_json = json.loads(os.environ["GOOGLE_JSON"])
-creds = ServiceAccountCredentials.from_json_keyfile_dict(google_json, scope)
+creds = ServiceAccountCredentials.from_json_keyfile_dict(google_creds, scope)
 client = gspread.authorize(creds)
 sheet = client.open_by_key(SHEET_ID).sheet1
 
-# ---------- ALTINKAYNAK GERÇEK AJAX ENDPOINT ----------
-URL = "https://www.altinkaynak.com/Home/GetGoldPrices"
+# ---- CHROME OPTIONS ----
+options = Options()
+options.add_argument("--headless")
+options.add_argument("--no-sandbox")
+options.add_argument("--disable-dev-shm-usage")
+options.add_argument("--window-size=1920,1080")
 
-headers = {
-    "User-Agent": "Mozilla/5.0",
-    "Accept": "application/json",
-    "X-Requested-With": "XMLHttpRequest",
-    "Referer": "https://www.altinkaynak.com/canli-kurlar/altin"
-}
+driver = webdriver.Chrome(options=options)
 
-resp = requests.get(URL, headers=headers, timeout=10)
-resp.raise_for_status()
-data = resp.json()
+driver.get("https://www.altinkaynak.com/canli-kurlar/altin")
+time.sleep(10)
 
-# ---------- SADECE GRAM ALTIN (24 AYAR) ----------
-gram = next(
-    x for x in data["data"]
-    if x["name"].lower().startswith("gram")
-)
+rows = driver.find_elements(By.XPATH, "//table//tbody//tr")
 
-alis = gram["buy"]
-satis = gram["sell"]
+alis = satis = None
 
-# ---------- SHEETS'E YAZ ----------
+for row in rows:
+    if "Gram" in row.text and "24" in row.text:
+        tds = row.find_elements(By.TAG_NAME, "td")
+        alis = tds[1].text
+        satis = tds[2].text
+        break
+
+driver.quit()
+
+if not alis or not satis:
+    raise Exception("❌ Gram Altın bulunamadı")
+
 sheet.update("A1:C1", [["Ürün", "Alış", "Satış"]])
 sheet.update("A2:C2", [["Gram Altın", alis, satis]])
 
-print("✅ Gram Altın güncellendi")
-print("Alış:", alis, "Satış:", satis)
+print("✅ Güncellendi:", alis, satis)
