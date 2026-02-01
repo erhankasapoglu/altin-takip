@@ -2,7 +2,7 @@ name: Gram Altın Takip
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 jobs:
@@ -12,15 +12,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Python kurulumu
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
-      - name: Paketleri kur
-        run: pip install -r requirements.txt
+      - name: Install deps
+        run: |
+          pip install selenium gspread oauth2client
 
-      - name: Scripti çalıştır
+      - name: Run script
         env:
-          GOOGLE_JSON: ${{ secrets.GOOGLE_JSON }}
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
         run: python gram_altin_sheets.py
