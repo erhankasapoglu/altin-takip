@@ -1,6 +1,8 @@
 import os
 import json
 import time
+from datetime import datetime, timezone, timedelta
+
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from selenium import webdriver
@@ -49,7 +51,19 @@ driver.quit()
 if not alis or not satis:
     raise Exception("❌ Gram Altın bulunamadı")
 
-sheet.update("A1:C1", [["Ürün", "Alış", "Satış"]])
-sheet.update("A2:C2", [["Gram Altın", alis, satis]])
+# ---- TÜRKİYE SAATİ (UTC+3) ----
+turkey_time = datetime.now(timezone.utc) + timedelta(hours=3)
+formatted_time = turkey_time.strftime("%d.%m.%Y %H:%M")
 
-print("✅ Güncellendi:", alis, satis)
+# ---- SHEETS'E YAZ ----
+sheet.update(
+    "A1:D1",
+    [["Ürün", "Alış", "Satış", "Son Güncelleme"]]
+)
+
+sheet.update(
+    "A2:D2",
+    [["Gram Altın", alis, satis, formatted_time]]
+)
+
+print("✅ Güncellendi:", alis, satis, formatted_time)
